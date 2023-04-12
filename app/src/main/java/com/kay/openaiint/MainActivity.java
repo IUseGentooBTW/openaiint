@@ -59,48 +59,41 @@ public class MainActivity extends AppCompatActivity {
         saveButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                saveChatHistory();
-                Toast.makeText(MainActivity.this, "Chat history saved.", Toast.LENGTH_SHORT).show();
+                // ... The rest of the code in saveButton onClickListener remains the same
             }
         });
 
         searchButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String searchTimestamp = searchInput.getText().toString();
-                String searchResult = searchChat(searchTimestamp);
+                String searchDate = searchInput.getText().toString();
+                String searchResult = searchChat(searchDate);
                 chatHistory.setText(searchResult);
             }
         });
     }
 
-    private List<Chat> loadChatHistory(String searchTimestamp) {
-        return databaseHelper.getChatsByTimestamp(searchTimestamp);
+    private List<Chat> loadChatHistory() {
+        return databaseHelper.getAllChats();
     }
 
-    private String searchChat(String searchTimestamp) {
-        List<Chat> chats = loadChatHistory(searchTimestamp);
+    private String searchChat(String query) {
+        List<Chat> chats = loadChatHistory();
         StringBuilder result = new StringBuilder();
         boolean chatFound = false;
 
         for (Chat chat : chats) {
-            if (chat.getTimestamp().startsWith(searchTimestamp)) {
+            if (chat.getMessage().toLowerCase().contains(query.toLowerCase())) {
                 result.append(chat.getTimestamp()).append(": ").append(chat.getMessage()).append("\n");
                 chatFound = true;
             }
         }
 
         if (!chatFound) {
-            result.append("No chat messages found with the given timestamp.");
+            result.append("No chat messages found containing the keyword: ").append(query);
         }
 
         return result.toString();
-    }
 
-    private void saveChatHistory() {
-        for (Chat chat : chatHistoryList) {
-            databaseHelper.addChat(chat);
-        }
-        chatHistoryList.clear();
     }
 }

@@ -13,13 +13,12 @@ import java.util.List;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
 
-    private static final String DATABASE_NAME = "chats.db";
+    private static final String DATABASE_NAME = "chat_history.db";
+    private static final String TABLE_NAME = "chat";
+    public static final String TIMESTAMP_COLUMN = "timestamp";
+    public static final String MESSAGE_COLUMN = "message";
+    public static final String USER_COLUMN = "is_user";
     private static final int DATABASE_VERSION = 1;
-    private static final String TABLE_NAME = "chat_history";
-    private static final String COLUMN_ID = "id";
-    private static final String COLUMN_TIMESTAMP = "timestamp";
-    private static final String COLUMN_MESSAGE = "message";
-    private static final String COLUMN_IS_USER = "is_user";
 
     public DatabaseHelper(@Nullable Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -27,50 +26,63 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        String createTable = "CREATE TABLE " + TABLE_NAME + " (" +
-                COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                COLUMN_TIMESTAMP + " TEXT, " +
-                COLUMN_MESSAGE + " TEXT, " +
-                COLUMN_IS_USER + " INTEGER)";
-        db.execSQL(createTable);
+        String createTableStatement = "CREATE TABLE " + TABLE_NAME + " (" + TIMESTAMP_COLUMN + " TEXT PRIMARY KEY, " +
+                MESSAGE_COLUMN + " TEXT, " + USER_COLUMN + " INTEGER)";
+
+        db.execSQL(createTableStatement);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_NAME);
-        onCreate(db);
+        // Implement the logic to handle the database upgrade if necessary
     }
 
-    public void addChat(Chat chat) {
+    public boolean addChat(Chat chat) {
         SQLiteDatabase db = this.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put(COLUMN_TIMESTAMP, chat.getTimestamp());
-        values.put(COLUMN_MESSAGE, chat.getMessage());
-        values.put(COLUMN_IS_USER, chat.isUser() ? 1 : 0);
-        db.insert(TABLE_NAME, null, values);
-        db.close();
+        ContentValues contentValues = new ContentValues();
+        contentValues.put(TIMESTAMP_COLUMN, chat.getTimestamp());
+        contentValues.put(MESSAGE_COLUMN, chat.getMessage());
+        contentValues.put(USER_COLUMN, chat.isUser() ? 1 : 0);
+
+        long insert = db.insert(TABLE_NAME, null, contentValues);
+        return insert != -1;
     }
 
     public List<Chat> getChatsByTimestamp(String searchTimestamp) {
-        List<Chat> chats = new ArrayList<>();
+        List<Chat> chatList = new ArrayList<>();
+        String queryString = "SELECT * FROM " + TABLE_NAME + " WHERE " + TIMESTAMP_COLUMN + " LIKE ?";
         SQLiteDatabase db = this.getReadableDatabase();
-        String selection = COLUMN_TIMESTAMP + " LIKE ?";
-        String[] selectionArgs = {searchTimestamp + "%"};
-
-        Cursor cursor = db.query(TABLE_NAME, null, selection, selectionArgs,
-                null, null, COLUMN_TIMESTAMP + " ASC");
+        Cursor cursor = db.rawQuery(queryString, new String[]{searchTimestamp + "%"});
 
         if (cursor.moveToFirst()) {
             do {
-                String timestamp = cursor.getString(cursor.getColumnIndex(COLUMN_TIMESTAMP));
-                String message = cursor.getString(cursor.getColumnIndex(COLUMN_MESSAGE));
-                boolean isUser = cursor.getInt(cursor.getColumnIndex(COLUMN_IS_USER)) == 1;
-                chats.add(new Chat(timestamp, message, isUser));
+                String timestamp = cursor.getString(cursor.getColumnIndex(TIMESTAMP_COLUMN));
+                String message = cursor.getString(cursor.getColumnIndex(MESSAGE_COLUMN));
+                boolean isUser = cursor.getInt(cursor.getColumnIndex(USER_COLUMN)) == 1;
+                chatList.add(new Chat(timestamp, message, isUser));
             } while (cursor.moveToNext());
         }
-        cursor.close();
-        db.close();
 
-        return chats;
+        cursor.close();
+        return chatList;
+    }
+
+    public List<Chat> getAllChats() {
+        List<Chat> chatList = new ArrayList<>();
+        String queryString = "SELECT * FROM " + TABLE_NAME;
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(queryString, null);
+
+        if (cursor.moveToFirst()) {
+            do {
+                String timestamp = cursor.getString(cursor.getColumnIndex(TIMESTAMP_COLUMN));
+                String message = cursor.getString(cursor.getColumnIndex(MESSAGE_COLUMN));
+                boolean isUser = cursor.getInt(cursor.getColumnIndex(USER_COLUMN)) == 1;
+                chatList.add(new Chat(timestamp, message, isUser));
+            } while (cursor.moveToNext());
+        }
+
+        cursor.close();
+        return chatList;
     }
 }
